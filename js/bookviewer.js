@@ -26,23 +26,36 @@ export class BookViewer {
         const searchButton = document.getElementById("bilatu");
         nextButton.addEventListener("click", () => this.nextBook());
         prevButton.addEventListener("click", () => this.prevBook());
-        searchButton.addEventListener("click", () => {
-            const isbn = this.isbn.value.trim();
-            if (isbn) {
-                this.handleSearchData(isbn);
-            }
-        });
+        searchButton.addEventListener('click', () => this.searchBook());
+
+    }
         
+    
+    searchBook() {
+        // Erabiltzaileak sartutako ISBN-a lortu
+        const isbnValue = this.isbn.value.trim();
+        if (isbnValue) {
+            const url = `${this.search_base}${isbnValue}`;
+            console.log("Fetching from URL:", url);
+
+            fetch(url)
+            .then(r => r.json())
+        .then(data => {
+            this.handleSearchData(data);
+        });
+        } else {
+            console.error("Mesedez, sartu ISBN bat.");
+        }
     }
 
     extractBookData = (book) => {
         // json objektu egoki bat bueltatu, zure webgunean erabili ahal izateko
-        return {
-            title: book.title || "N/A",
-            author: book.author_name ? book.author_name.join(", ") : "N/A",
-            cover: book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : "placeholder.jpg",
-            publish_date: book.first_publish_year || "N/A",
-            isbn: book.isbn ? book.isbn.join(", ") : "N/A",
+            return {
+            isbn: book.isbn,
+            egilea: book.egilea,
+            izenburua: book.izenburua,
+            data: book.data,
+            filename: book.filename,
         };
       };
       
@@ -57,25 +70,34 @@ export class BookViewer {
         // extractBookData eta addBookToData funtzioak erabili, indizea berria lortuz
         // updateView funtzioa erabili, liburu berria bistaratzeko
         if (data && data.docs && data.docs.length > 0) {
-            const book = data.docs[0];
-            const extractedData = this.extractBookData(book);
-            this.index = this.addBookToData(extractedData, this.data);
-            this.updateView();
+            const bookData = {
+                isbn: data.docs[0].isbn,
+                egilea:data.docs[0].author_name,
+                izenburua: data.docs[0].title,
+                data:data.docs[0].first_publish_year.toString(),
+                filename: `${data.docs[0].cover_i}-M.jpg`
+            };
+
+            const newIndex = this.addBookToData(bookData, this.data);
+            this.index = newIndex;
+            
+           this.updateView();
         } else {
-            console.error("No book found with that ISBN.");
+            console.error("Liburua ez da aurkitu.");
         }
     };
 
     updateView() {
         // liburuaren datu guztiak bistaratu
         // liburu kopurua bistaratu
-        const currentBook = this.data[this.index];
-        if (currentBook) {
-            this.irudia.src = currentBook.cover;
-            this.egilea.textContent = currentBook.author;
-            this.izenburua.textContent = currentBook.title;
-            this.dataElem.textContent = currentBook.publish_date;
-            this.liburuKopuru.textContent = `Book ${this.index + 1} of ${this.data.length}`;
+        const book = this.data[this.index]; // Egungo liburua lortu
+        if (book) {
+            this.irudia.src = `${this.base}${book.filename}`; // Irudia eguneratu
+            this.egilea.value = book.egilea; // Egilea eguneratu
+            this.izenburua.value = book.izenburua; // Izenburua eguneratu
+            this.dataElem.value = book.data; // Data eguneratu
+            this.isbn.value = book.isbn; // ISBN eguneratu
+            this.liburuKopuru.innerText = `${this.index + 1} / ${this.data.length}`; // Liburu kopurua eguneratu
         }
     }
 
